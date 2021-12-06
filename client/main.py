@@ -1,59 +1,64 @@
 import socket
 import threading
 import time
+import pygame as pg
 
-# CLIENT
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-# SETTING
-HOST = "192.168.100.5"
-PORT = 8080
-ADDR = (HOST, PORT)
-BUFFER_SIZE = 4096
-FORMAT = "utf-8"
+# VERSION
+VERSION = "1.0.0"
+
+# INITIALIZATION
+pg.init()
+pg.font.init()
+
+# WINDOW
+WIN_HEIGHT = 600
+WIN_WIDTH = 900
+WIN = pg.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
+pg.display.set_caption('Tetris Battle')
+
+# CLOCK
+CLOCK = pg.time.Clock()
+
+# PROCEDURE CONTROLLER
+GAME_FPS = 60
+RUN = True
+STAGE = 0
+
+# CONSTANTS
+COLOR_RED = [255, 0, 0]
+COLOR_GREEN = [0, 255, 0]
+COLOR_BLUE = [0, 0, 255]
+COLOR_YELLOW = [255, 255, 0]
+COLOR_PURPLE = [255, 0, 255]
+COLOR_CYAN = [0, 255, 255]
+COLOR_WHITE = [255, 255, 255]
+BRICK_SIZE = 30
+BRICK_COLORS = [COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_YELLOW, COLOR_PURPLE, COLOR_CYAN, COLOR_WHITE]
+POOL_HEIGHT = 20
+POOL_WIDTH = 10
+
+# GAME VARIABLES
+BG_STAGE_1 = pg.Surface(WIN.get_size()).convert()
 
 # PROTOCOL MESSAGE
-DISCONNECT_MESSAGE = "$DISCONNECT"
-ZOMBIE_MESSAGE = "$ZOMBIE"
-GREETING_MESSAGE = "$GREETING"
-
-# def disconnect():
-#     print(f"({time.ctime()}) [DISCONNECTED] {self._addr} has disconnected")
-#         self._conn.close()
-
-def send(msg):
-    try:
-        client.send(msg.encode(FORMAT))
-        return client.recv(BUFFER_SIZE).decode()
-
-    except Exception as e:
-        print(e)
+MESSAGE_DISCONNECT = "$DISCONNECT"
+MESSAGE_ZOMBIE = "$ZOMBIE"
+MESSAGE_GREETING = "$GREETING"
+MESSAGE_PLAYER1WIN = "$PLAYER1WIN"
+MESSAGE_PLAYER2WIN = "$PLAYER2WIN"
+MESSAGES = [MESSAGE_DISCONNECT, MESSAGE_ZOMBIE, MESSAGE_GREETING, MESSAGE_PLAYER1WIN, MESSAGE_PLAYER2WIN]
 
 
-data = "data "
+while RUN:
+    CLOCK.tick(GAME_FPS)
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            RUN = False
 
-if __name__ == '__main__':
-    try:
-        print(f"({time.ctime()}) [CONNECTING] connecting to server...")
-        client.connect(ADDR)
-        response = send("$GREETING")
-        if response == "$GREETING":
-            print(f"({time.ctime()}) [CONNECTED] successfully connected to server")
-        else:
-            print(f"({time.ctime()}) [ABORTION] connection attempt has been aborted")
-            client.close()
+pg.quit()
 
-    except Exception as e:
-        print(e)
-        print(f"({time.ctime()}) [ABORTION] connection attempt has been aborted")
-        client.close()
 
-    count = 0
-    while count < 100:
-        time.sleep(1)
-        response = send(data + str(count))
-        print(response)
-        count += 1
 
-# TODO: if recieving win message then send DISCONNECT_MESSAGE
 # TODO: first recive consisting of Nones
+# TODO: if receive fails, except back to stage 1

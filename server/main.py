@@ -4,6 +4,9 @@ import time
 from player import Player
 from game_platform import Game_platform
 
+# VERSION
+VERSION = "1.0.0"
+
 # SERVER
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -32,7 +35,7 @@ GAME_FPS = 60
 
 def thread_game(player1, player2):
     print(f"Game {len(games)} start!")
-    game = Game_platform(player1, player2, GAME_FPS)
+    game = Game_platform(player1, player2)
     games.append(game)
 
     # start game 
@@ -42,11 +45,19 @@ def thread_game(player1, player2):
     games.remove(game)
     
 def wait_for_match():
-    if len(players) >= 2 and len(games) < MAX_GAMES:
-        player1 = players.pop()
-        player2 = players.pop()
-        new_game = threading.Thread(target=thread_game, args=(player1, player2))
-        new_game.start()
+    if len(players) >= 2:
+        candidates = players[:2]
+        for player in candidates:
+            player.greeting()
+            if not player.connected:
+                players.remove(player)
+        if candidates[0].connected and candidates[1].connected and len(games) < MAX_GAMES:
+            player1 = candidates[0]
+            player2 = candidates[1]
+            players.remove(player1)
+            players.remove(player2)
+            new_game_platform = threading.Thread(target=thread_game, args=(player1, player2))
+            new_game_platform.start()
 
 def wait_for_connection():
     try:
@@ -54,7 +65,7 @@ def wait_for_connection():
             if len(players) < MAX_PLAYERS_IN_QUEUE:
                 conn, addr = server.accept()
                 print(f"({time.ctime()}) [CONNECTED] {addr} connected")
-                players.append(Player(conn, addr, BUFFER_SIZE, FORMAT, MESSAGE_DISCONNECT))
+                players.append(Player(conn))
             wait_for_match()
 
     except Exception as e: 

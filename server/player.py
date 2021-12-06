@@ -1,27 +1,42 @@
 import time
 
+# SETTING
+HOST = "192.168.100.5"
+PORT = 8080
+ADDR = (HOST, PORT)
+BUFFER_SIZE = 4096
+FORMAT = "utf-8"
+
 # PROTOCOL MESSAGE
 MESSAGE_DISCONNECT = "$DISCONNECT"
 MESSAGE_ZOMBIE = "$ZOMBIE"
 MESSAGE_GREETING = "$GREETING"
 
 class Player:
-    def __init__(self, conn, addr, buffer_size, format):
+    def __init__(self, conn):
         self._conn = conn
-        self._addr = addr
-        self._buffer_size = buffer_size
-        self._format = format
         self.connected = False
-        if self.receive() == MESSAGE_GREETING:
-            self.response(MESSAGE_GREETING)
-            self.connected = True
+
+    def greeting(self):
+        try:
+            self._conn.send(MESSAGE_GREETING.encode(FORMAT))
+            response = self._conn.recv(BUFFER_SIZE).decode(FORMAT)
+            if response == MESSAGE_GREETING:
+                self.connected = True
+
+        except Exception as e:
+            print(f"({time.ctime()}) [EXCEPTION] ", e)
+            self._disconnected()
 
     def receive(self):
         try:
-            data = self._conn.recv(self._buffer_size).decode(self._format)
+            data = self._conn.recv(BUFFER_SIZE).decode(FORMAT)
             if data == MESSAGE_DISCONNECT:
                 self._disconnected()
                 return MESSAGE_ZOMBIE
+            if data == MESSAGE_GREETING:
+                self.response(MESSAGE_GREETING)
+                self.connected = True
             return data
             
         except Exception as e:
@@ -31,13 +46,13 @@ class Player:
 
     def response(self, msg):
         try:
-            self._conn.send(msg.encode(self._format))
+            self._conn.send(msg.encode(FORMAT))
 
         except Exception as e:
             print(f"({time.ctime()}) [EXCEPTION] ", e)
             self._disconnected()
 
     def _disconnected(self):
-        print(f"({time.ctime()}) [DISCONNECTED] {self._addr} has disconnected")
+        print(f"({time.ctime()}) [DISCONNECTED] {ADDR} has disconnected")
         self.connected = False
         self._conn.close()

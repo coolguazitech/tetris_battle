@@ -10,7 +10,7 @@ MESSAGE_PLAYER2WIN = "$PLAYER2WIN"
 
 
 class Game_platform:
-    def __init__(self, player1, player2, cycle_per_second):
+    def __init__(self, player1, player2):
         self.player1 = player1
         self.player2 = player2
         self.mailbox = {
@@ -19,30 +19,36 @@ class Game_platform:
                 "RIGHT": 0,
                 "DOWN": 0,
                 "SPACE": 0,
+                "trace_code": 0
             }),
             2: json.dumps({
                 "LEFT": 0,
                 "RIGHT": 0,
                 "DOWN": 0,
                 "SPACE": 0,
+                "trace_code": 0
             }),
             3: json.dumps({
                 "queue_bricks1": None,
                 "cur_brick1": None,
                 "pool1": None,
+                "motion_eliminate1": None,
+                "speed1": None,
+                "trace_code1": None,
                 "queue_bricks2": None,
                 "cur_brick2": None,
-                "pool2": None
+                "pool2": None,
+                "motion_eliminate2": None,
+                "speed2": None,
+                "trace_code2": None
             })
         }
-        self._cycle_per_second = cycle_per_second
-        # TODO: send a start message, if responsed, go onto the next
         threading.Thread(target=self._postman1_work).start()
         threading.Thread(target=self._postman2_work).start()
         threading.Thread(target=self._postman3_work).start()
 
     def start(self):
-        game = Game(self._cycle_per_second, self.mailbox)
+        game = Game(self.mailbox)
         game.main_loop()
 
     def _postman1_work(self):
