@@ -3,16 +3,13 @@ import threading
 from game import Game
 import json
 
-# PROTOCOL MESSAGE
-MESSAGE_DELIVERY = "$DELIVERY"
-MESSAGE_PLAYER1WIN = "$PLAYER1WIN"
-MESSAGE_PLAYER2WIN = "$PLAYER2WIN"
+# GAME SETTING
+GAME_FPS = 60
 
-
-class Game_platform:
-    def __init__(self, player1, player2):
-        self.player1 = player1
-        self.player2 = player2
+class Platform:
+    def __init__(self, avatar1, avatar2):
+        self.avatar1 = avatar1
+        self.avatar2 = avatar2
         self.mailbox = {
             1: json.dumps({
                 "LEFT": 0,
@@ -34,7 +31,7 @@ class Game_platform:
                 "pool1": None,
                 "motion_eliminate1": None,
                 "speed1": None,
-                "trace_code1": None,
+                "trace_code1": 0,
                 "queue_bricks2": None,
                 "cur_brick2": None,
                 "pool2": None,
@@ -46,23 +43,27 @@ class Game_platform:
         threading.Thread(target=self._postman1_work).start()
         threading.Thread(target=self._postman2_work).start()
         threading.Thread(target=self._postman3_work).start()
-
-    def start(self):
-        game = Game(self.mailbox)
-        game.main_loop()
+        Game(self.mailbox).main_loop()
 
     def _postman1_work(self):
-        while self.player1.connected:
-            self.mailbox[1] = self.player1.receive()
+        while self.avatar1.connected:
+            self.mailbox[1] = self.avatar1.receive()
 
     def _postman2_work(self):
-        while self.player2.connected:
-            self.mailbox[2] = self.player2.receive()
+        while self.avatar2.connected:
+            self.mailbox[2] = self.avatar2.receive()
 
     def _postman3_work(self):
-        time.sleep(1.0 / self._cycle_per_second)
-        while self.player1.connected or self.player2.connected:
-            if self.player1.connected:
-                self.player1.response(self.mailbox[3])
-            if self.player2.connected:
-                self.player2.response(self.mailbox[3])
+        time.sleep(1.0 / GAME_FPS)
+        while self.avatar1.connected or self.avatar2.connected:
+            if self.avatar1.connected:
+                data = self._attach_signature(self.mailbox[3], "1")
+                self.avatar1.response(data)
+            if self.avatar2.connected:
+                data = self._attach_signature(self.mailbox[3], "2")
+                self.avatar2.response(data)
+
+    def _attach_signature(self, data, signature):
+        """attach signature to data to proclaim who will receive"""
+        data += signature
+        return data

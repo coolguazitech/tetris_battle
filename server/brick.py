@@ -54,7 +54,7 @@ class Brick:
             for debris in self.position:
                 debris[1] += 1
 
-    def transform(self, shift):
+    def rotate(self, shift):
         if self.type == 1:
             if self.state == 1:
                 self.position[0][0] += 1

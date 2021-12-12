@@ -4,12 +4,14 @@ import json
 import copy
 
 # PROTOCOL MESSAGE
-MESSAGE_DISCONNECT = "$DISCONNECT"
 MESSAGE_ZOMBIE = "$ZOMBIE"
-MESSAGE_GREETING = "$GREETING"
 MESSAGE_PLAYER1WIN = "$PLAYER1WIN"
 MESSAGE_PLAYER2WIN = "$PLAYER2WIN"
-MESSAGES = [MESSAGE_DISCONNECT, MESSAGE_ZOMBIE, MESSAGE_GREETING, MESSAGE_PLAYER1WIN, MESSAGE_PLAYER2WIN]
+MESSAGES = [
+    MESSAGE_ZOMBIE,
+    MESSAGE_PLAYER1WIN, 
+    MESSAGE_PLAYER2WIN,
+    ]
 
 # POOL SIZE
 POOL_HEIGHT = 20
@@ -69,15 +71,16 @@ class Game:
             data_players = self._pick_up_from_mailbox()
 
             for i, data in enumerate(data_players):
-                if data["LEFT"] > data["RIGHT"] and self._check_can_move_to("LEFT", player=(i + 1)):
-                    exec(f"self._cur_brick{i + 1}.move('LEFT')")
-                elif data["LEFT"] < data["RIGHT"] and self._check_can_move_to("RIGHT", player=(i + 1)):
-                    exec(f"self._cur_brick{i + 1}.move('RIGHT')")
+                if self._count_game % 3 == 0:
+                    if data["LEFT"] > data["RIGHT"] and self._check_can_move_to("LEFT", player=(i + 1)):
+                        exec(f"self._cur_brick{i + 1}.move('LEFT')")
+                    elif data["LEFT"] < data["RIGHT"] and self._check_can_move_to("RIGHT", player=(i + 1)):
+                        exec(f"self._cur_brick{i + 1}.move('RIGHT')")
                 if data["DOWN"]:
-                    exec(f"self._count_move{i + 1} -= (GAME_FPS * PERIOD_SPEED_1_PER_MOVE) * (0.95 ** self._speed{i + 1}) * 0.5")
+                    exec(f"self._count_move{i + 1} -= (GAME_FPS * PERIOD_SPEED_1_PER_MOVE) * (0.95 ** self._speed{i + 1}) * 0.3")
                 if data["SPACE"]:
-                    if self._check_can_transform(player=(i + 1))[0]:
-                        exec(f"self._cur_brick{i + 1}.transform(self._check_can_transform(player=(i + 1))[1])")
+                    if self._check_can_rotate(player=(i + 1))[0]:
+                        exec(f"self._cur_brick{i + 1}.rotate(self._check_can_rotate(player=(i + 1))[1])")
                 exec(f"self._trace_code{i + 1} = data['trace_code']")
 
             for i in range(1, 3):
@@ -109,6 +112,7 @@ class Game:
     def _pick_up_from_mailbox(self):
         for i in range(1 , 3):
             if self._data[i] in MESSAGES:
+                # someone left, game needs to continue
                 self._data[i] = json.dumps({
                         "LEFT": 0,
                         "RIGHT": 0,
@@ -138,7 +142,7 @@ class Game:
         return True
 
     @_member_selector("pool", "cur_brick")
-    def _check_can_transform(self, **func_kwargs):
+    def _check_can_rotate(self, **func_kwargs):
         pool = eval(func_kwargs["pool"])
         cur_brick = eval(func_kwargs["cur_brick"])
         can = False
@@ -146,7 +150,7 @@ class Game:
         for i in range(4):
             old_position = copy.deepcopy(cur_brick.position)
             old_state = cur_brick.state
-            cur_brick.transform(i)
+            cur_brick.rotate(i)
             new_position = cur_brick.position
             count = 0
             for x, y in new_position:
@@ -186,7 +190,7 @@ class Game:
 
     @_member_selector("count_move", "speed")
     def _reset_count_move(self, **func_kwargs):
-        exec("%s = %d" % (func_kwargs["count_move"], (GAME_FPS * PERIOD_SPEED_1_PER_MOVE) * (0.95 ** func_kwargs["speed"])))
+        exec("%s = %d" % (func_kwargs["count_move"], (GAME_FPS * PERIOD_SPEED_1_PER_MOVE) * (0.95 ** eval(func_kwargs["speed"]))))
 
     @_member_selector("motion_eliminate")
     def _reset_motion_eliminate(self, num_lines, **func_kwargs):
@@ -222,11 +226,14 @@ class Game:
 
     def _check_speed_up(self):
         if self._count_game % (GAME_FPS * PERIOD_SPEED_1_PER_MOVE) == 0:
-            self._speed_up()
+            for i in range(1, 3):
+                self._speed_up(1, player=i)
 
-    def _speed_up(self):
-        self._speed1 += 1
-        self._speed2 += 1
+    @_member_selector("speed")
+    def _speed_up(self, count, **func_kwargs):
+        speed = eval(func_kwargs["speed"])
+        if speed <= 100:
+            speed += count
 
     def _drop_into_mailbox(self):
         for i in range(1, 3):
@@ -252,7 +259,7 @@ class Game:
             "trace_code2": eval("trace_code2"),
             }
 
-        if self._data[3] not in MESSAGES:
+        if self._data[3] not in MESSAGES: # if not win or start message
             self._data[3] = json.dumps(dict_data)
 
     @_member_selector("pool")
@@ -278,7 +285,31 @@ class Game:
             else:
                 cur_row -= 1
 
-        self._reset_motion_eliminate(total_lines, player=func_kwargs["player"])
+        if total_lines == 1:
+            self._reset_motion_eliminate(total_lines, player=func_kwargs["player"])
+            if func_kwargs["player"] == 1:
+                self._speed_up(1, player=2)
+            elif func_kwargs["player"] == 2:
+                self._speed_up(1, player=1)
+        elif total_lines == 2:
+            self._reset_motion_eliminate(total_lines, player=func_kwargs["player"])
+            if func_kwargs["player"] == 1:
+                self._speed_up(2, player=2)
+            elif func_kwargs["player"] == 2:
+                self._speed_up(2, player=1)
+        elif total_lines == 3:
+            self._reset_motion_eliminate(total_lines, player=func_kwargs["player"])
+            if func_kwargs["player"] == 1:
+                self._speed_up(4, player=2)
+            elif func_kwargs["player"] == 2:
+                self._speed_up(4, player=1)
+        elif total_lines == 4:
+            self._reset_motion_eliminate(total_lines, player=func_kwargs["player"])
+            if func_kwargs["player"] == 1:
+                self._speed_up(8, player=2)
+            elif func_kwargs["player"] == 2:
+                self._speed_up(8, player=1)
+        
 
 
 
