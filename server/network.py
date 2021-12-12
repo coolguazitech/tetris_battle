@@ -1,5 +1,6 @@
 import time
 import socket
+import json
 
 # METADATA
 SIZE_HEADER = 8
@@ -7,11 +8,9 @@ SIZE_BUFFER = 64
 FORMAT = "utf-8"
 
 # PROTOCOL MESSAGE
-MESSAGE_DISCONNECT = "$DISCONNECT"
 MESSAGE_ZOMBIE = "$ZOMBIE"
 MESSAGE_GREETING = "$GREETING"
 MESSAGES = [
-    MESSAGE_DISCONNECT,
     MESSAGE_ZOMBIE, 
     MESSAGE_GREETING, 
     ]
@@ -40,23 +39,29 @@ class Avatar:
     def receive(self):
         try:
             data = self._get_all_data()
+
+            # answer client's greeting
             if data[:9] == MESSAGE_GREETING:
                 data, version = data[:9], data[9:]
                 self.response(data + str(version == self._version))
                 self.connected = version == self._version
                 if version != self._version:
                     self._disconnected()
-
-            elif data == MESSAGE_DISCONNECT:
-                self._disconnected()
-                return MESSAGE_ZOMBIE
-
-            return data
+            else:
+                return data
             
         except socket.error as e: 
             print(f"({time.ctime()}) [EXCEPTION] ", e)
             self._disconnected()
-            return MESSAGE_ZOMBIE
+            data = {
+                "LEFT": 0,
+                "RIGHT": 0,
+                "DOWN": 0,
+                "SPACE": 0,
+                "score": 0,
+                "tags": [MESSAGE_ZOMBIE]
+            }
+            return json.dumps(data)
 
     def response(self, msg):
         try:
@@ -85,4 +90,7 @@ class Avatar:
                 full_msg += msg.decode(FORMAT)
                 msglen -= SIZE_BUFFER
         return full_msg
+    
+    def __bool__(self):
+        return self.connected
 

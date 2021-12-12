@@ -1,14 +1,5 @@
 import pygame as pg
-
-# PROTOCOL MESSAGE
-MESSAGE_DISCONNECT = "$DISCONNECT"
-MESSAGE_ZOMBIE = "$ZOMBIE"
-MESSAGE_GREETING = "$GREETING"
-MESSAGE_PLAYER1WIN = "$PLAYER1WIN"
-MESSAGE_PLAYER2WIN = "$PLAYER2WIN"
-MESSAGES = [MESSAGE_DISCONNECT, MESSAGE_ZOMBIE, MESSAGE_GREETING, MESSAGE_PLAYER1WIN, MESSAGE_PLAYER2WIN]
-MESSAGE_ENDSET = "$ENDSET"
-MESSAGES.append([MESSAGE_ENDSET])
+import db_utils
 
 # WINDOW
 WIN_HEIGHT = 600
@@ -46,6 +37,7 @@ class Set:
                 "BG_SCENE_Game_room": pg.image.load('images/BG_SCENE_Game_room.png').convert(),
                 "DIALOGUE_queue": pg.image.load('images/DIALOGUE_queue.png').convert(),
                 "DIALOGUE_error_version": pg.image.load('images/DIALOGUE_error_version.png').convert(),
+                "DIALOGUE_error_timeout": pg.image.load('images/DIALOGUE_error_timeout.png').convert(),
                 "badge_D_0": pg.image.load('images/badge_D_0.png').convert(),
                 "badge_D_1": pg.image.load('images/badge_D_1.png').convert(),
                 "badge_D_2": pg.image.load('images/badge_D_2.png').convert(),
@@ -88,6 +80,11 @@ class Set:
                 "minibadge_S_3": pg.image.load('images/minibadge_S_3.png').convert(),
             },
             "network": None,
+            "public_info": {
+                "score": 0,
+                "badge": "D0",
+                "tags": []
+            },
             "collection_input": {
                 "LEFT": 0,
                 "RIGHT": 0,
@@ -95,19 +92,24 @@ class Set:
                 "SPACE": 0,
                 "q" : 0
             },
-            "mailbox": {
+            "game_property": {
                 "queue_bricks1": None,
                 "cur_brick1": None,
                 "pool1": None,
                 "motion_eliminate1": None,
                 "speed1": None,
+                "score1": 0,
+                "badge1": "D0",
                 "trace_code1": 0,
                 "queue_bricks2": None,
                 "cur_brick2": None,
                 "pool2": None,
                 "motion_eliminate2": None,
-                "speed2": None,
-                "trace_code2": 0
+                "speed2": None, 
+                "score2": 0,
+                "badge2": "D0",
+                "trace_code2": None,
+                "tags": []
             }
         }
         
@@ -161,36 +163,48 @@ class Set:
             data["RIGHT"] = 1
         if keys[pg.K_DOWN]:
             data["DOWN"] = 1
-        
+
+    def _update_rank(self):
+        dict_info = db_utils.fetch(1)
+        self._equipment["public_info"]["score"] = dict_info["SCORE"]
+        self._equipment["public_info"]["badge"] = dict_info["RANK"]
 
     def _drop_into_mailbox(self):
         if self._equipment["network"]:
             if self._equipment["network"].connected:
                 for direction in ["LEFT", "RIGHT", "DOWN", "SPACE"]:
                     self._equipment["network"].mailbox[1][direction] = self._equipment["collection_input"][direction]
+                self._equipment["network"].mailbox[1]["score"] = self._equipment["public_info"]["score"]
+                self._equipment["network"].mailbox[1]["badge"] = self._equipment["public_info"]["badge"]
+                self._equipment["network"].mailbox[1]["tags"].extend(self._equipment["public_info"]["tags"])
 
     def _pick_up_from_mailbox(self):
         if self._equipment["network"]:
             if self._equipment["network"].connected:
-                self._equipment["mailbox"].update(self._equipment["network"].mailbox[2])
+                self._equipment["game_property"].update(self._equipment["network"].mailbox[2])
 
     def _check_network(self):
         if self._equipment["network"]:
             if not self._equipment["network"].connected:
-                self._equipment["mailbox"].update(
+                self._equipment["game_property"].update(
                     {
                         "queue_bricks1": None,
                         "cur_brick1": None,
                         "pool1": None,
                         "motion_eliminate1": None,
                         "speed1": None,
+                        "score1": 0,
+                        "badge1": "D0",
                         "trace_code1": 0,
                         "queue_bricks2": None,
                         "cur_brick2": None,
                         "pool2": None,
                         "motion_eliminate2": None,
-                        "speed2": None,
-                        "trace_code2": 0
+                        "speed2": None, 
+                        "score2": 0,
+                        "badge2": "D0",
+                        "trace_code2": None,
+                        "tags": []
                     }
                 )
 

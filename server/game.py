@@ -7,10 +7,15 @@ import copy
 MESSAGE_ZOMBIE = "$ZOMBIE"
 MESSAGE_PLAYER1WIN = "$PLAYER1WIN"
 MESSAGE_PLAYER2WIN = "$PLAYER2WIN"
+MESSAGE_STARTGAME = "$STARTGAME"
+MESSAGE_STARTGAME1 = "$STARTGAME1"
+MESSAGE_STARTGAME2 = "$STARTGAME2"
 MESSAGES = [
     MESSAGE_ZOMBIE,
     MESSAGE_PLAYER1WIN, 
     MESSAGE_PLAYER2WIN,
+    MESSAGE_STARTGAME1,
+    MESSAGE_STARTGAME2
     ]
 
 # POOL SIZE
@@ -28,8 +33,8 @@ COUNT_MOTION_ELIMINATE = 3 # seconds
 GAME_FPS = 60
 
 class Game:
-    def __init__(self, data):
-        self._data = data
+    def __init__(self, mailbox):
+        self._game_property = mailbox
         self._queue_bricks1 = None
         self._cur_brick1 = None
         self._pool1 = None
@@ -43,15 +48,20 @@ class Game:
         self._motion_eliminate2 = None
         self._speed1 = 1
         self._speed2 = 1
+        self._score1 = 0
+        self._score2 = 0
+        self._badge1 = "D0"
+        self._badge2 = "D0"
         self._trace_code1 = 0
         self._trace_code2 = 0
+        self._tags = []
         self._run = False
         self._init_game()
 
     def _member_selector(*obj_names):
         """
-            select objects from whoever you want, input which player is in the kwargs of decorated
-            function when invoking.
+        select objects from whoever you want, input which player is in the kwargs of decorated
+        function when invoking.
         """
         def decorator(func):
             def wrapper(*func_args, **func_kwargs):
@@ -63,10 +73,11 @@ class Game:
 
     def main_loop(self):
         while self._run:
-            self._check_state()
-            if self._data[3] == MESSAGE_PLAYER1WIN or self._data[3] == MESSAGE_PLAYER2WIN:
-                continue
             time.sleep(1.0 / GAME_FPS)
+
+            self._check_state()
+            if MESSAGE_PLAYER1WIN in self._tags or MESSAGE_PLAYER2WIN in self._tags:
+                continue
 
             data_players = self._pick_up_from_mailbox()
 
@@ -82,6 +93,15 @@ class Game:
                     if self._check_can_rotate(player=(i + 1))[0]:
                         exec(f"self._cur_brick{i + 1}.rotate(self._check_can_rotate(player=(i + 1))[1])")
                 exec(f"self._trace_code{i + 1} = data['trace_code']")
+                exec(f"self._score{i + 1} = data['score']")
+                exec(f"self._badge{i + 1} = data['badge']")
+
+            for i in range(1, 3):
+                if eval(f"self._trace_code{i}") != 0:
+                    self._tags = list(filter(
+                        (eval(f"MESSAGE_STARTGAME{i}")).__ne__, 
+                        self._tags
+                        ))
 
             for i in range(1, 3):
                 self._check_eliminate(player=i)
@@ -103,24 +123,16 @@ class Game:
             self._reset_count_move(player=i)
         self._count_game = 0
         self._run = True
+        self._tags.extend([MESSAGE_STARTGAME1, MESSAGE_STARTGAME2])
         self._drop_into_mailbox()
 
     def _check_state(self):
-        if self._data[1] == MESSAGE_ZOMBIE and self._data[2] == MESSAGE_ZOMBIE:
+        if not MESSAGE_ZOMBIE in self._game_property[1]["tags"] and \
+            not MESSAGE_ZOMBIE in self._game_property[2]["tags"]:
             self._run = False
 
     def _pick_up_from_mailbox(self):
-        for i in range(1 , 3):
-            if self._data[i] in MESSAGES:
-                # someone left, game needs to continue
-                self._data[i] = json.dumps({
-                        "LEFT": 0,
-                        "RIGHT": 0,
-                        "DOWN": 0,
-                        "SPACE": 0,
-                        "trace_code": 0
-                    }) 
-        return json.loads(self._data[1]), json.loads(self._data[2])
+        return self._game_property[1], self._game_property[2]
 
     @_member_selector("pool", "cur_brick")
     def _check_can_move_to(self, direction, **func_kwargs):
@@ -182,7 +194,10 @@ class Game:
                 cur_brick.move("DOWN")
             else:
                 if max(cur_brick.position, key=lambda x: x[1])[1] < 0:
-                    self._data[3] = MESSAGE_PLAYER2WIN if func_kwargs["player"] == 1 else MESSAGE_PLAYER1WIN
+                    if func_kwargs["player"] == 1:
+                        self._tags.append(MESSAGE_PLAYER2WIN)
+                    else:
+                        self._tags.append(MESSAGE_PLAYER1WIN)
                 else:
                     self._reset_count_move(player=func_kwargs["player"])
                     self._update_pool(player=func_kwargs["player"])
@@ -232,8 +247,7 @@ class Game:
     @_member_selector("speed")
     def _speed_up(self, count, **func_kwargs):
         speed = eval(func_kwargs["speed"])
-        if speed <= 100:
-            speed += count
+        speed = min(speed + count, 100)
 
     def _drop_into_mailbox(self):
         for i in range(1, 3):
@@ -242,25 +256,31 @@ class Game:
             exec(f"pool{i} = self._pool{i}")
             exec(f"motion_eliminate{i} = self._motion_eliminate{i}")
             exec(f"speed{i} = self._speed{i}")
+            exec(f"score{i} = self._score{i}")
+            exec(f"badge{i} = self._badge{i}")
             exec(f"trace_code{i} = self._trace_code{i}")
         
-        dict_data = {
+        dict_game_property = {
             "queue_bricks1": eval("queue_bricks1"),
             "cur_brick1": eval("cur_brick1"),
             "pool1": eval("pool1"),
             "motion_eliminate1": eval("motion_eliminate1"),
             "speed1": eval("speed1"),
+            "score1": eval("score1"),
+            "badge1": eval("badge1"),
             "trace_code1": eval("trace_code1"),
             "queue_bricks2": eval("queue_bricks2"),
             "cur_brick2": eval("cur_brick2"),
             "pool2": eval("pool2"),
             "motion_eliminate2": eval("motion_eliminate2"),
             "speed2": eval("speed2"),
+            "score2": eval("score2"),
+            "badge2": eval("badge2"),
             "trace_code2": eval("trace_code2"),
+            "tags": self._tags
             }
 
-        if self._data[3] not in MESSAGES: # if not win or start message
-            self._data[3] = json.dumps(dict_data)
+        self._game_property[3].update(dict_game_property)
 
     @_member_selector("pool")
     def _check_eliminate(self, **func_kwargs):

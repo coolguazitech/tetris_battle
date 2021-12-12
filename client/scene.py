@@ -3,13 +3,25 @@ from set import Set
 import db_utils
 from network import Network
 
-# PROTOCOL MESSAGE
+# PROTOCOL TAGS
 MESSAGE_ENDSCENE = "$ENDSCENE"
-MESSAGE_STARTGAME = "$STARTGAME"
+MESSAGE_STARTGAME1 = "$STARTGAME1"
+MESSAGE_STARTGAME2 = "$STARTGAME2"
+EVENT_QUEUE = "$QUEUE"
+ERROR_TIMEOUT = "$ERROR_TIMEOUT"
+ERROR_VERSION = "$ERROR_VERSION"
 MESSAGES = [
     MESSAGE_ENDSCENE,
-    MESSAGE_STARTGAME
+    MESSAGE_STARTGAME1,
+    MESSAGE_STARTGAME2
     ]
+EVENTS = [
+    EVENT_QUEUE
+]
+ERRORS = [
+    ERROR_TIMEOUT,
+    ERROR_VERSION
+]
 
 # WINDOW
 WIN_HEIGHT = 600
@@ -45,7 +57,6 @@ class Scene:
     def __init__(self):
         self.name = type(self).__name__
         self._rundown = {}
-        # {"part1": self.part1, "part2": self.part2}
         self._name_entrance = ""
         self._name_current_part = self._name_entrance
         self._run = True
@@ -55,16 +66,6 @@ class Scene:
 
     def _switch_to_part(self, name_part):
         self._name_current_part = name_part
-
-    # def part1(self):
-    #     print("hello1")
-    #     name_next_part = "part2"
-    #     return name_next_part
-
-    # def part2(self):
-    #     print("hello2")
-    #     name_next_part = MESSAGE_ENDSCENE
-    #     return name_next_part
 
     def _action(self):
         while self._run:
@@ -109,8 +110,7 @@ class Main_screen(Scene):
         return name_next_part
 
     def blit_score(self):
-        dict_info = db_utils.fetch(1)
-        score = dict_info["SCORE"]
+        score = self._equipment["public_info"]["score"]
         text_score = Set.get_text(str(score), SIZE_SCORE, COLOR_SCORE, COLOR_WHITE)
         text_score.set_colorkey(COLOR_WHITE)
         Set.blit(text_score, POSITION_SCORE, mode="center")
@@ -118,47 +118,46 @@ class Main_screen(Scene):
         return name_next_part
 
     def blit_badge(self):
-        dict_info = db_utils.fetch(1)
-        rank, level = dict_info["RANK"][0], dict_info["RANK"][1]
+        badge = self._equipment["public_info"]["badge"]
+        rank, level = badge[0], badge[1]
         name_badge = "badge_" + rank + "_" + level
         image_badge = self._equipment["images"][name_badge]
         image_badge.set_colorkey(COLOR_WHITE)
         Set.blit(image_badge, POSITION_BADGE, mode="center")
-
         name_next_part = "fork_1"
         return name_next_part
 
     def fork_1(self):
-        # TODO: ERROR_TIMEOUT
         # TODO: all exceptions raised in game will lead the footage here
         # check network
         if self._equipment["network"]:
             if not self._equipment["network"].connected:
-                if "QUEUE" in self.events:
-                    self.events.remove("QUEUE")
-            if "ERROR_TIMEOUT" in self._equipment["network"].events:
-                self._equipment["network"].events.remove("ERROR_TIMEOUT")
-                self.events.append("ERROR_TIMEOUT")
+                self.events = list(filter((EVENT_QUEUE).__ne__, self.events))
+            if ERROR_TIMEOUT in self._equipment["network"].events:
+                self._equipment["network"].events = list(filter(
+                    (ERROR_TIMEOUT).__ne__, 
+                    self._equipment["network"].events
+                    ))
+                self.events.append(ERROR_TIMEOUT)
         elif not self._equipment["network"]:
-            if "QUEUE" in self.events:
-                self.events.remove("QUEUE")
+            self.events = list(filter((EVENT_QUEUE).__ne__, self.events))
         # fork        
         if len(self.events) == 0 and self._equipment["collection_input"]["SPACE"]:
             network = Network() 
             if network.connected:
                 self._equipment["network"] = network
-                self.events.append("QUEUE")
+                self.events.append(EVENT_QUEUE)
                 name_next_part = MESSAGE_ENDSCENE
-            elif "ERROR_VERSION" in network.events:
-                self.events.append("ERROR_VERSION")
+            elif ERROR_VERSION in network.events:
+                self.events.append(ERROR_VERSION)
                 name_next_part = MESSAGE_ENDSCENE
             else:
                 name_next_part = MESSAGE_ENDSCENE
-        elif "ERROR_TIMEOUT" in self.events:
+        elif ERROR_TIMEOUT in self.events:
             name_next_part = "blit_dialogue_error_timeout"
-        elif "ERROR_VERSION" in self.events:
+        elif ERROR_VERSION in self.events:
             name_next_part = "blit_dialogue_error_version"
-        elif "QUEUE" in self.events:
+        elif EVENT_QUEUE in self.events:
             name_next_part = "blit_dialogue_queue"
         else:
             name_next_part = MESSAGE_ENDSCENE
@@ -174,12 +173,19 @@ class Main_screen(Scene):
         return name_next_part
 
     def fork_2(self):
-        if "QUEUE" in self.events and MESSAGE_STARTGAME in self._equipment["network"].events:
-            self.events.remove("QUEUE")
+        if MESSAGE_STARTGAME1 in self._equipment["network"].events or \
+            MESSAGE_STARTGAME2 in self._equipment["network"].events:
+            self.events = list(filter((EVENT_QUEUE).__ne__, self.events))
             name_next_part = MESSAGE_ENDSCENE
             self._name_next_scene = "Game_room"
-        elif "QUEUE" in self.events and self._equipment["collection_input"]["q"]:
-            self.events.remove("QUEUE")
+            for i in range(1, 3):
+                self._equipment["network"].events = list(filter(
+                    (eval(f"MESSAGE_STARTGAME{i}")).__ne__, 
+                    self._equipment["network"].events
+                    ))
+            self.__init__()
+        elif EVENT_QUEUE in self.events and self._equipment["collection_input"]["q"]:
+            self.events = list(filter((EVENT_QUEUE).__ne__, self.events))
             self._equipment["network"].disconnect()
             name_next_part = MESSAGE_ENDSCENE
         else:
@@ -197,24 +203,24 @@ class Main_screen(Scene):
         return name_next_part
 
     def fork_3(self):
-        if "ERROR_VERSION" in self.events and self._equipment["collection_input"]["SPACE"]:
-            self.events.remove("ERROR_VERSION")
+        if ERROR_VERSION in self.events and self._equipment["collection_input"]["SPACE"]:
+            self.events = list(filter((ERROR_VERSION).__ne__, self.events))
             name_next_part = MESSAGE_ENDSCENE
         else:
             name_next_part = MESSAGE_ENDSCENE
         return name_next_part
 
     def blit_dialogue_error_timeout(self):
-        # image_dialogue_error_version = self._equipment["images"]["DIALOGUE_error_version"]
-        # image_dialogue_error_version.set_colorkey(COLOR_WHITE)
-        # Set.blit(image_dialogue_error_version, POSITION_DIALOGUE, mode="center")
+        image_dialogue_error_timeout = self._equipment["images"]["DIALOGUE_error_timeout"]
+        image_dialogue_error_timeout.set_colorkey(COLOR_WHITE)
+        Set.blit(image_dialogue_error_timeout, POSITION_DIALOGUE, mode="center")
 
         name_next_part = "fork_4"
         return name_next_part
 
     def fork_4(self):
-        if "ERROR_TIMEOUT" in self.events and self._equipment["collection_input"]["SPACE"]:
-            self.events.remove("ERROR_TIMEOUT")
+        if ERROR_TIMEOUT in self.events and self._equipment["collection_input"]["SPACE"]:
+            self.events = list(filter((ERROR_TIMEOUT).__ne__, self.events))
             name_next_part = MESSAGE_ENDSCENE
         else:
             name_next_part = MESSAGE_ENDSCENE
@@ -231,6 +237,24 @@ class Game_room(Scene):
         self._name_next_scene = "Game_room"
 
     def blit_background(self):
-        Set.blit(self._equipment["images"]["BG_SCENE_Game_room"], (0, 0))
-        name_next_part = MESSAGE_ENDSCENE
+        Set.blit(self._equipment["images"]["BG_SCENE_Main_screen"], (0, 0))
+        name_next_part = "blit_score"
+        return name_next_part
+
+    def blit_score(self):
+        score = self._equipment["public_info"]["score"]
+        text_score = Set.get_text(str(score), SIZE_SCORE, COLOR_SCORE, COLOR_WHITE)
+        text_score.set_colorkey(COLOR_WHITE)
+        Set.blit(text_score, POSITION_SCORE, mode="center")
+        name_next_part = "blit_badge"
+        return name_next_part
+
+    def blit_badge(self):
+        badge = self._equipment["public_info"]["badge"]
+        rank, level = badge[0], badge[1]
+        name_badge = "badge_" + rank + "_" + level
+        image_badge = self._equipment["images"][name_badge]
+        image_badge.set_colorkey(COLOR_WHITE)
+        Set.blit(image_badge, POSITION_BADGE, mode="center")
+        name_next_part = "fork_1"
         return name_next_part

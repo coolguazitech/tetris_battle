@@ -31,7 +31,7 @@ field = []
 def detect_and_eradicate_zombies(queue):
     for avatar in queue[:]:
         avatar.greeting()
-        if not avatar.connected:
+        if not avatar:
             queue.remove(avatar)
 
 def thread_platform(avatar1, avatar2):
@@ -44,24 +44,22 @@ def thread_platform(avatar1, avatar2):
     
 def wait_for_match(queue, field):
     detect_and_eradicate_zombies(queue)
-    print(f"there are {len(field)} games in gameroom")
-    time.sleep(2.0)
     if len(queue) >= 2 and len(field) < MAX_PLATFORMS:
+        time.sleep(7.0)
         candidates = queue[:2]
         avatar1 = candidates[0]
         avatar2 = candidates[1]
         queue.remove(avatar1)
         queue.remove(avatar2)
-        new_game_platform = threading.Thread(target=thread_platform, args=(avatar1, avatar2)).start()
-        new_game_platform
+        threading.Thread(target=thread_platform, args=(avatar1, avatar2)).start()
 
 def wait_for_connection(queue, field):
     try:
         while True:
-            print(f"there are {len(queue)} avatars in queue")
+            print(f"there are {len(queue)} avatars in queue, {len(field)} platforms in field")
             if len(queue) < MAX_AVATARS_IN_QUEUE:
                 conn, addr = server.accept()
-                conn.settimeout(5.0)  
+                conn.settimeout(7.0)  
                 print(f"({time.ctime()}) [CONNECTED] {addr} connected")
                 queue.append(Avatar(conn, addr, VERSION))
             wait_for_match(queue, field)
