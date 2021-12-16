@@ -1,68 +1,87 @@
-import time
 import threading
 from game import Game
 import json
+import pygame as pg
+
+pg.init()
 
 # PROTOCOL MESSAGE
-MESSAGE_DELIVERY = "$DELIVERY"
-MESSAGE_PLAYER1WIN = "$PLAYER1WIN"
-MESSAGE_PLAYER2WIN = "$PLAYER2WIN"
+MESSAGE_STARTGAME1 = "$STARTGAME1"
+MESSAGE_STARTGAME2 = "$STARTGAME2"
 
+# GAME SETTING
+GAME_FPS_SERVER = 300
 
-class Game_platform:
-    def __init__(self, player1, player2):
-        self.player1 = player1
-        self.player2 = player2
+class Platform:
+    def __init__(self, avatar1, avatar2):
+        self.avatar1 = avatar1
+        self.avatar2 = avatar2
         self.mailbox = {
-            1: json.dumps({
+            1: {
                 "LEFT": 0,
                 "RIGHT": 0,
                 "DOWN": 0,
                 "SPACE": 0,
-                "trace_code": 0
-            }),
-            2: json.dumps({
+                "score": 0,
+                "badge": "D0",
+                "trace_code": 0,
+                "tags": []
+            },
+            2: {
                 "LEFT": 0,
                 "RIGHT": 0,
                 "DOWN": 0,
                 "SPACE": 0,
-                "trace_code": 0
-            }),
-            3: json.dumps({
+                "score": 0,
+                "badge": "D0",
+                "trace_code": 0,
+                "tags": []
+            },
+            3: {
                 "queue_bricks1": None,
                 "cur_brick1": None,
                 "pool1": None,
-                "motion_eliminate1": None,
-                "speed1": None,
-                "trace_code1": None,
+                "motion_eliminate1": [1, -1],
+                "speed1": 1,
+                "score1": 1,
+                "badge1": "D0",
+                "trace_code1": 0,
                 "queue_bricks2": None,
                 "cur_brick2": None,
                 "pool2": None,
-                "motion_eliminate2": None,
-                "speed2": None,
-                "trace_code2": None
-            })
+                "motion_eliminate2": [1, -1],
+                "speed2": 1, 
+                "score2": 1,
+                "badge2": "D0",
+                "trace_code2": 0,
+                "tags": []
+            }
         }
         threading.Thread(target=self._postman1_work).start()
         threading.Thread(target=self._postman2_work).start()
         threading.Thread(target=self._postman3_work).start()
-
-    def start(self):
-        game = Game(self.mailbox)
-        game.main_loop()
+        Game(self.mailbox, GAME_FPS_SERVER).main_loop()
 
     def _postman1_work(self):
-        while self.player1.connected:
-            self.mailbox[1] = self.player1.receive()
+        while self.avatar1:
+            self.mailbox[1].update(json.loads(self.avatar1.receive()))
+
 
     def _postman2_work(self):
-        while self.player2.connected:
-            self.mailbox[2] = self.player2.receive()
+        while self.avatar2:
+            self.mailbox[2].update(json.loads(self.avatar2.receive()))
 
     def _postman3_work(self):
-        time.sleep(1.0 / self._cycle_per_second)
-        while self.player1.connected or self.player2.connected:
-            if self.player1.connected:
-                self.player1.response(self.mailbox[3])
-            if self.player2.connected:
-                self.player2.response(self.mailbox[3])
+        pg.time.delay(150)
+        while self.avatar1 or self.avatar2:
+            if self.avatar1:
+                data = self._attach_signature(json.dumps(self.mailbox[3]), "1")
+                self.avatar1.response(data)
+            if self.avatar2:
+                data = self._attach_signature(json.dumps(self.mailbox[3]), "2")
+                self.avatar2.response(data)
+
+    def _attach_signature(self, data, signature):
+        """attach signature to data to proclaim who will receive"""
+        data += signature
+        return data

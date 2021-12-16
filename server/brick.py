@@ -27,7 +27,7 @@ class Brick:
             self.position = [[3, -2], [3, -1], [4, -1], [5, -1]]
             self.color = COLOR_GREEN
         elif random_type == 3:
-            self.position = [[4, -1], [4, -1], [5, -2], [5, -2]]
+            self.position = [[4, -1], [4, -2], [5, -1], [5, -2]]
             self.color = COLOR_BLUE
         elif random_type == 4:
             self.position = [[3, -1], [4, -1], [5, -1], [6, -1]]
@@ -54,7 +54,7 @@ class Brick:
             for debris in self.position:
                 debris[1] += 1
 
-    def transform(self, shift):
+    def rotate(self, shift):
         if self.type == 1:
             if self.state == 1:
                 self.position[0][0] += 1
