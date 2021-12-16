@@ -17,7 +17,7 @@ PORT = 8080
 ADDR = (HOST, PORT)
 
 # GAME SETTING
-GAME_FPS = 60
+
 MAX_AVATARS_IN_QUEUE = 2
 MAX_PLATFORMS = MAX_AVATARS_IN_QUEUE // 2
 
@@ -45,7 +45,7 @@ def thread_platform(avatar1, avatar2):
 def wait_for_match(queue, field):
     detect_and_eradicate_zombies(queue)
     if len(queue) >= 2 and len(field) < MAX_PLATFORMS:
-        time.sleep(7.0)
+        time.sleep(5.0)
         candidates = queue[:2]
         avatar1 = candidates[0]
         avatar2 = candidates[1]

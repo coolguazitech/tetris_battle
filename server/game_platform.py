@@ -1,10 +1,16 @@
-import time
 import threading
 from game import Game
 import json
+import pygame as pg
+
+pg.init()
+
+# PROTOCOL MESSAGE
+MESSAGE_STARTGAME1 = "$STARTGAME1"
+MESSAGE_STARTGAME2 = "$STARTGAME2"
 
 # GAME SETTING
-GAME_FPS = 60
+GAME_FPS_SERVER = 300
 
 class Platform:
     def __init__(self, avatar1, avatar2):
@@ -35,7 +41,7 @@ class Platform:
                 "queue_bricks1": None,
                 "cur_brick1": None,
                 "pool1": None,
-                "motion_eliminate1": None,
+                "motion_eliminate1": [1, -1],
                 "speed1": 1,
                 "score1": 1,
                 "badge1": "D0",
@@ -43,29 +49,30 @@ class Platform:
                 "queue_bricks2": None,
                 "cur_brick2": None,
                 "pool2": None,
-                "motion_eliminate2": None,
+                "motion_eliminate2": [1, -1],
                 "speed2": 1, 
                 "score2": 1,
                 "badge2": "D0",
-                "trace_code2": None,
+                "trace_code2": 0,
                 "tags": []
             }
         }
         threading.Thread(target=self._postman1_work).start()
         threading.Thread(target=self._postman2_work).start()
         threading.Thread(target=self._postman3_work).start()
-        Game(self.mailbox).main_loop()
+        Game(self.mailbox, GAME_FPS_SERVER).main_loop()
 
     def _postman1_work(self):
         while self.avatar1:
             self.mailbox[1].update(json.loads(self.avatar1.receive()))
+
 
     def _postman2_work(self):
         while self.avatar2:
             self.mailbox[2].update(json.loads(self.avatar2.receive()))
 
     def _postman3_work(self):
-        time.sleep(1.0 / GAME_FPS)
+        pg.time.delay(150)
         while self.avatar1 or self.avatar2:
             if self.avatar1:
                 data = self._attach_signature(json.dumps(self.mailbox[3]), "1")

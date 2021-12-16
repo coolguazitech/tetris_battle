@@ -3,8 +3,8 @@ import socket
 import json
 
 # METADATA
-SIZE_HEADER = 8
-SIZE_BUFFER = 64
+SIZE_HEADER = 4
+SIZE_BUFFER = 1500
 FORMAT = "utf-8"
 
 # PROTOCOL MESSAGE
@@ -26,7 +26,7 @@ class Avatar:
     def greeting(self):
         try:
             msg = f"{len(MESSAGE_GREETING):<{SIZE_HEADER}}" + MESSAGE_GREETING
-            self.conn.send(msg.encode(FORMAT))
+            self.conn.sendall(msg.encode(FORMAT))
 
             response = self._get_all_data()
             if response == MESSAGE_GREETING:
@@ -66,7 +66,7 @@ class Avatar:
     def response(self, msg):
         try:
             msg = f"{len(msg):<{SIZE_HEADER}}" + msg
-            self.conn.send(msg.encode(FORMAT))
+            self.conn.sendall(msg.encode(FORMAT))
 
         except socket.error as e: 
             print(f"({time.ctime()}) [EXCEPTION] ", e)
