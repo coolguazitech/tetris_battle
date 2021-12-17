@@ -1,3 +1,3 @@
 # Tetris Battle Online
-### Have fun with opponents online on Tetirs battle!
+### Have fun with opponents online on Tetirs Battle Online!
 
