@@ -3,7 +3,7 @@ import time
 
 
 def create_table():
-    conn = lite.connect('Tetris_Battle.db')
+    conn = lite.connect('.\Tetris_Battle.db')
     cur = conn.cursor()
 
     try:
@@ -36,7 +36,7 @@ def create_table():
         conn.close()
 
 def fetch(id):
-    conn = lite.connect('Tetris_Battle.db')
+    conn = lite.connect('.\Tetris_Battle.db')
     cur = conn.cursor()
 
     data = cur.execute(
@@ -61,7 +61,7 @@ def fetch(id):
 def update(id, dict_info):
     dict_old_info = fetch(1)
     dict_old_info.update(dict_info)
-    conn = lite.connect('Tetris_Battle.db')
+    conn = lite.connect('.\Tetris_Battle.db')
     cur = conn.cursor()
     cur.execute(
         '''
@@ -81,7 +81,7 @@ def update(id, dict_info):
     conn.close()
 
 def drop_table():
-    conn = lite.connect('Tetris_Battle.db')
+    conn = lite.connect('.\Tetris_Battle.db')
     cur = conn.cursor()
 
     try:
@@ -95,9 +95,5 @@ def drop_table():
         print(e)
     conn.close()
 
-if __name__ == '__main__':
-    create_table()
-
-    print(fetch(1))
 
 

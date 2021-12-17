@@ -1,12 +1,11 @@
-import socket
-import threading
 import time
-import pygame as pg
 from set import Set
 from main_screen import Main_screen
 from game_room import Game_room
 from intro import Intro
 import db_utils
+import os
+import pygame as pg
 
 # VERSION
 VERSION = "1.0.0"

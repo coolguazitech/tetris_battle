@@ -1,6 +1,4 @@
-import time
 from brick import Brick
-import json
 import copy
 import pygame as pg
 

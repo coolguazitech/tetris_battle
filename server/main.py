@@ -43,7 +43,6 @@ def thread_platform(avatar1, avatar2):
     field.remove(platform)
     
 def wait_for_match(queue, field):
-    time.sleep(5.0)
     detect_and_eradicate_zombies(queue)
     if len(queue) >= 2 and len(field) < MAX_PLATFORMS:
         candidates = queue[:2]
