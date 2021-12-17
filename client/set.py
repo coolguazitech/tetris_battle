@@ -7,7 +7,7 @@ WIN_HEIGHT = 600
 WIN_WIDTH = 900
 
 # GAME 
-GAME_NAME = "Tetris Battle"
+GAME_NAME = "Tetris Battle Online"
 FPS_GAME = 300
 FPS_SERVER = 300
 
@@ -28,6 +28,10 @@ class Set:
     # WINDOW
     window = pg.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
     pg.display.set_caption(GAME_NAME)
+
+    # ICON
+    ICON = pg.image.load(os.path.join(os.path.dirname(__file__), 'images/icon.png')).convert()
+    pg.display.set_icon(ICON)
 
     def __init__(self, version):
         self._scenes = {}
